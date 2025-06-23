@@ -22,10 +22,18 @@ set(SOURCES "audio_codecs/audio_codec.cc"
             "ota.cc"
             "settings.cc"
             "background_task.cc"
+            "platform/system_factory.cc"
             "main.cc"
             )
 
-set(INCLUDE_DIRS "." "display" "audio_codecs" "protocols" "audio_processing")
+# 添加平台特定的源文件
+if(ESP_PLATFORM)
+    list(APPEND SOURCES "platform/esp32/esp32_system.cc")
+else()
+    list(APPEND SOURCES "platform/linux/linux_system.cc")
+endif()
+
+set(INCLUDE_DIRS "." "display" "audio_codecs" "protocols" "audio_processing" "platform")
 
 # 添加 IOT 相关文件
 file(GLOB IOT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/iot/things/*.cc)
