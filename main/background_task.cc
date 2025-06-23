@@ -1,29 +1,39 @@
 #include "background_task.h"
+#include "platform/system_interface.h"  // 改为包含 system_interface.h
 
-#include <esp_log.h>
-#include <esp_task_wdt.h>
 
 #define TAG "BackgroundTask"
 
 BackgroundTask::BackgroundTask(uint32_t stack_size) {
-    xTaskCreate([](void* arg) {
-        BackgroundTask* task = (BackgroundTask*)arg;
-        task->BackgroundTaskLoop();
-    }, "background_task", stack_size, this, 2, &background_task_handle_);
+    task_manager_ = platform::SystemFactory::CreateTaskManager();
+    
+    platform::TaskManager::TaskConfig config;
+    config.name = "background_task";
+    config.stack_size = stack_size;
+    config.priority = 2;
+    
+    auto task_func = [this]() {
+        this->BackgroundTaskLoop();
+    };
+    
+    task_manager_->CreateTask(config, task_func, &background_task_handle_);
 }
 
 BackgroundTask::~BackgroundTask() {
-    if (background_task_handle_ != nullptr) {
-        vTaskDelete(background_task_handle_);
+    if (background_task_handle_ != nullptr && task_manager_) {
+        task_manager_->DeleteTask(background_task_handle_);
     }
 }
 
 void BackgroundTask::Schedule(std::function<void()> callback) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (active_tasks_ >= 30) {
-        int free_sram = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+        // 注意：这里需要使用平台抽象的系统信息接口
+        auto system_info = platform::SystemFactory::CreateSystemInfo();
+        uint32_t free_sram = system_info->GetFreeHeapSize();
         if (free_sram < 10000) {
-            ESP_LOGW(TAG, "active_tasks_ == %u, free_sram == %u", active_tasks_.load(), free_sram);
+            // 使用平台抽象的日志接口（后续在日志抽象层任务中实现）
+            printf("WARN: active_tasks_ == %lu, free_sram == %lu\n", (unsigned long)active_tasks_.load(), (unsigned long)free_sram);
         }
     }
     active_tasks_++;
@@ -48,7 +58,7 @@ void BackgroundTask::WaitForCompletion() {
 }
 
 void BackgroundTask::BackgroundTaskLoop() {
-    ESP_LOGI(TAG, "background_task started");
+    printf("INFO: background_task started\n");
     while (true) {
         std::unique_lock<std::mutex> lock(mutex_);
         condition_variable_.wait(lock, [this]() { return !background_tasks_.empty(); });

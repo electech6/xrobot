@@ -1,12 +1,12 @@
 #ifndef BACKGROUND_TASK_H
 #define BACKGROUND_TASK_H
 
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
+#include "platform/system_interface.h"
 #include <mutex>
 #include <list>
 #include <condition_variable>
 #include <atomic>
+#include <memory>
 
 class BackgroundTask {
 public:
@@ -20,7 +20,8 @@ private:
     std::mutex mutex_;
     std::list<std::function<void()>> background_tasks_;
     std::condition_variable condition_variable_;
-    TaskHandle_t background_task_handle_ = nullptr;
+    std::unique_ptr<platform::TaskManager> task_manager_;
+    platform::TaskManager::TaskHandle background_task_handle_ = nullptr;
     std::atomic<size_t> active_tasks_{0};
 
     void BackgroundTaskLoop();
