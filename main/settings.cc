@@ -1,87 +1,94 @@
 #include "settings.h"
-
-#include <esp_log.h>
-#include <nvs_flash.h>
-
-#define TAG "Settings"
+#include <iostream>
 
 Settings::Settings(const std::string& ns, bool read_write) : ns_(ns), read_write_(read_write) {
-    nvs_open(ns.c_str(), read_write_ ? NVS_READWRITE : NVS_READONLY, &nvs_handle_);
+    storage_ = platform::StorageFactory::CreateStorage();
+    platform::SystemError err = storage_->Open(ns, read_write);
+    if (err != platform::SystemError::kSuccess) {
+        std::cerr << "Failed to open storage namespace: " << ns << std::endl;
+    }
 }
 
 Settings::~Settings() {
-    if (nvs_handle_ != 0) {
-        if (read_write_ && dirty_) {
-            ESP_ERROR_CHECK(nvs_commit(nvs_handle_));
-        }
-        nvs_close(nvs_handle_);
+    if (storage_ && read_write_ && dirty_) {
+        storage_->Commit();
+    }
+    if (storage_) {
+        storage_->Close();
     }
 }
 
 std::string Settings::GetString(const std::string& key, const std::string& default_value) {
-    if (nvs_handle_ == 0) {
-        return default_value;
-    }
-
-    size_t length = 0;
-    if (nvs_get_str(nvs_handle_, key.c_str(), nullptr, &length) != ESP_OK) {
+    if (!storage_) {
         return default_value;
     }
 
     std::string value;
-    value.resize(length);
-    ESP_ERROR_CHECK(nvs_get_str(nvs_handle_, key.c_str(), value.data(), &length));
-    while (!value.empty() && value.back() == '\0') {
-        value.pop_back();
+    if (storage_->GetString(key, value) != platform::SystemError::kSuccess) {
+        return default_value;
     }
+
     return value;
 }
 
 void Settings::SetString(const std::string& key, const std::string& value) {
-    if (read_write_) {
-        ESP_ERROR_CHECK(nvs_set_str(nvs_handle_, key.c_str(), value.c_str()));
-        dirty_ = true;
+    if (storage_ && read_write_) {
+        if (storage_->SetString(key, value) == platform::SystemError::kSuccess) {
+            dirty_ = true;
+        } else {
+            std::cerr << "Failed to set string for key: " << key << std::endl;
+        }
     } else {
-        ESP_LOGW(TAG, "Namespace %s is not open for writing", ns_.c_str());
+        std::cerr << "Namespace " << ns_ << " is not open for writing" << std::endl;
     }
 }
 
 int32_t Settings::GetInt(const std::string& key, int32_t default_value) {
-    if (nvs_handle_ == 0) {
+    if (!storage_) {
         return default_value;
     }
 
     int32_t value;
-    if (nvs_get_i32(nvs_handle_, key.c_str(), &value) != ESP_OK) {
+    if (storage_->GetInt(key, value) != platform::SystemError::kSuccess) {
         return default_value;
     }
     return value;
 }
 
 void Settings::SetInt(const std::string& key, int32_t value) {
-    if (read_write_) {
-        ESP_ERROR_CHECK(nvs_set_i32(nvs_handle_, key.c_str(), value));
-        dirty_ = true;
+    if (storage_ && read_write_) {
+        if (storage_->SetInt(key, value) == platform::SystemError::kSuccess) {
+            dirty_ = true;
+        } else {
+            std::cerr << "Failed to set int for key: " << key << std::endl;
+        }
     } else {
-        ESP_LOGW(TAG, "Namespace %s is not open for writing", ns_.c_str());
+        std::cerr << "Namespace " << ns_ << " is not open for writing" << std::endl;
     }
 }
 
 void Settings::EraseKey(const std::string& key) {
-    if (read_write_) {
-        auto ret = nvs_erase_key(nvs_handle_, key.c_str());
-        if (ret != ESP_ERR_NVS_NOT_FOUND) {
-            ESP_ERROR_CHECK(ret);
+    if (storage_ && read_write_) {
+        platform::SystemError err = storage_->EraseKey(key);
+        if (err != platform::SystemError::kSuccess && 
+            err != platform::SystemError::kNotSupported) {
+            std::cerr << "Failed to erase key: " << key << std::endl;
+        } else {
+            dirty_ = true;
         }
     } else {
-        ESP_LOGW(TAG, "Namespace %s is not open for writing", ns_.c_str());
+        std::cerr << "Namespace " << ns_ << " is not open for writing" << std::endl;
     }
 }
 
 void Settings::EraseAll() {
-    if (read_write_) {
-        ESP_ERROR_CHECK(nvs_erase_all(nvs_handle_));
+    if (storage_ && read_write_) {
+        if (storage_->EraseAll() == platform::SystemError::kSuccess) {
+            dirty_ = true;
+        } else {
+            std::cerr << "Failed to erase all keys in namespace: " << ns_ << std::endl;
+        }
     } else {
-        ESP_LOGW(TAG, "Namespace %s is not open for writing", ns_.c_str());
+        std::cerr << "Namespace " << ns_ << " is not open for writing" << std::endl;
     }
 }

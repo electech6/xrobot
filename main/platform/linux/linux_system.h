@@ -73,6 +73,11 @@ public:
     uint32_t GetMinFreeHeapSize() override;
     std::string GetMacAddress() override;
     void Restart() override;
+    
+    // 实现新增方法
+    uint32_t GetFlashSize() override;
+    bool PrintTaskCpuUsage(uint32_t wait_ms) override;
+    bool PrintTaskList() override;
 };
 
 } // namespace linux_platform

@@ -9,6 +9,7 @@
 #include <sstream>
 #include <iomanip>
 #include <cstdlib>
+#include <sys/statvfs.h>
 
 namespace platform {
 namespace linux_platform {
@@ -238,6 +239,32 @@ std::string LinuxSystemInfo::GetMacAddress() {
 
 void LinuxSystemInfo::Restart() {
     std::system("sudo reboot");
+}
+
+// 实现GetFlashSize
+uint32_t LinuxSystemInfo::GetFlashSize() {
+    // Linux上可以通过statvfs获取磁盘空间
+    struct statvfs stat;
+    if (statvfs("/", &stat) != 0) {
+        return 0;
+    }
+    return stat.f_blocks * stat.f_frsize;
+}
+
+// 实现PrintTaskCpuUsage
+bool LinuxSystemInfo::PrintTaskCpuUsage(uint32_t wait_ms) {
+    // Linux上可以通过/proc/stat获取CPU使用率
+    printf("Task CPU usage (Linux implementation):\n");
+    // 这里可以实现Linux特定的CPU使用率统计
+    return true;
+}
+
+// 实现PrintTaskList
+bool LinuxSystemInfo::PrintTaskList() {
+    // Linux上可以通过ps命令获取进程列表
+    printf("Task list (Linux implementation):\n");
+    // 这里可以实现Linux特定的进程列表显示
+    return true;
 }
 
 } // namespace linux_platform

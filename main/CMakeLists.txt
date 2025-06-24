@@ -23,14 +23,17 @@ set(SOURCES "audio_codecs/audio_codec.cc"
             "settings.cc"
             "background_task.cc"
             "platform/system_factory.cc"
+            "platform/storage_interface.cc"
             "main.cc"
             )
 
 # 添加平台特定的源文件
 if(ESP_PLATFORM)
     list(APPEND SOURCES "platform/esp32/esp32_system.cc")
+    list(APPEND SOURCES "platform/esp32/esp32_storage.cc")
 else()
     list(APPEND SOURCES "platform/linux/linux_system.cc")
+    list(APPEND SOURCES "platform/linux/linux_storage.cc")
 endif()
 
 set(INCLUDE_DIRS "." "display" "audio_codecs" "protocols" "audio_processing" "platform")
@@ -321,4 +324,22 @@ spiffs_create_partition_assets(
     FLASH_IN_PROJECT
     MMAP_FILE_SUPPORT_FORMAT ".aaf"
 )
+endif()
+
+# 添加存储抽象层文件
+list(APPEND SOURCES 
+    "main/platform/storage_interface.h"
+    "main/platform/storage_interface.cc"
+)
+
+if(ESP_PLATFORM)
+    list(APPEND SOURCES 
+        "main/platform/esp32/esp32_storage.h"
+        "main/platform/esp32/esp32_storage.cc"
+    )
+else()
+    list(APPEND SOURCES 
+        "main/platform/linux/linux_storage.h"
+        "main/platform/linux/linux_storage.cc"
+    )
 endif()

@@ -17,6 +17,9 @@ enum class SystemError {
     kNotSupported = -5
 };
 
+// 存储接口前向声明
+class Storage;
+
 // 定时器接口
 class Timer {
 public:
@@ -70,6 +73,11 @@ public:
     virtual uint32_t GetMinFreeHeapSize() = 0;
     virtual std::string GetMacAddress() = 0;
     virtual void Restart() = 0;
+    
+    // 新增方法 - 所有平台都必须实现
+    virtual uint32_t GetFlashSize() = 0;
+    virtual bool PrintTaskCpuUsage(uint32_t wait_ms) = 0;
+    virtual bool PrintTaskList() = 0;
 };
 
 // 系统工厂类
@@ -79,6 +87,7 @@ public:
     static std::unique_ptr<EventLoop> CreateEventLoop();
     static std::unique_ptr<TaskManager> CreateTaskManager();
     static std::unique_ptr<SystemInfo> CreateSystemInfo();
+    static std::unique_ptr<Storage> CreateStorage();
 };
 
 } // namespace platform

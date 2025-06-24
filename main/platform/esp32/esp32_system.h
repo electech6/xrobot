@@ -5,6 +5,16 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/event_groups.h>
+#include <esp_log.h>
+#include <esp_flash.h>
+#include <esp_mac.h>
+#include <esp_system.h>
+#include <esp_partition.h>
+#include <esp_app_desc.h>
+#include <esp_ota_ops.h>
+#if CONFIG_IDF_TARGET_ESP32P4
+#include "esp_wifi_remote.h"
+#endif
 #include <memory>
 
 namespace platform {
@@ -67,6 +77,11 @@ public:
     uint32_t GetMinFreeHeapSize() override;
     std::string GetMacAddress() override;
     void Restart() override;
+    
+    // 实现新增方法
+    uint32_t GetFlashSize() override;
+    bool PrintTaskCpuUsage(uint32_t wait_ms) override;
+    bool PrintTaskList() override;
 };
 
 } // namespace esp32

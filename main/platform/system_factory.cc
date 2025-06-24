@@ -1,10 +1,13 @@
 #include "system_interface.h"
+#include "storage_interface.h"
 
 #ifdef ESP_PLATFORM
 #include "esp32/esp32_system.h"
+#include "esp32/esp32_storage.h"
 using namespace platform::esp32;
 #else
 #include "linux/linux_system.h"
+#include "linux/linux_storage.h"
 using namespace platform::linux_platform;
 #endif
 

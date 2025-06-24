@@ -2,7 +2,8 @@
 #define SETTINGS_H
 
 #include <string>
-#include <nvs_flash.h>
+#include <memory>
+#include "platform/storage_interface.h"
 
 class Settings {
 public:
@@ -18,7 +19,7 @@ public:
 
 private:
     std::string ns_;
-    nvs_handle_t nvs_handle_ = 0;
+    std::unique_ptr<platform::Storage> storage_;
     bool read_write_ = false;
     bool dirty_ = false;
 };
