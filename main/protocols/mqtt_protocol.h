@@ -3,12 +3,10 @@
 
 
 #include "protocol.h"
-#include <mqtt.h>
-#include <udp.h>
+#include "network/network_interface.h"
 #include <cJSON.h>
 #include <mbedtls/aes.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/event_groups.h>
+#include "platform/system_interface.h"
 
 #include <functional>
 #include <string>
@@ -32,13 +30,13 @@ public:
     bool IsAudioChannelOpened() const override;
 
 private:
-    EventGroupHandle_t event_group_handle_;
+    std::unique_ptr<platform::EventGroup> event_group_;
 
     std::string publish_topic_;
 
     std::mutex channel_mutex_;
-    Mqtt* mqtt_ = nullptr;
-    Udp* udp_ = nullptr;
+    network::MqttInterface* mqtt_ = nullptr;
+    network::UdpInterface* udp_ = nullptr;
     mbedtls_aes_context aes_ctx_;
     std::string aes_nonce_;
     std::string udp_server_;

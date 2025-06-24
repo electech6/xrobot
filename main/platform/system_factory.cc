@@ -45,4 +45,20 @@ std::unique_ptr<SystemInfo> SystemFactory::CreateSystemInfo() {
 #endif
 }
 
+std::unique_ptr<Storage> SystemFactory::CreateStorage() {
+#ifdef ESP_PLATFORM
+    return std::make_unique<Esp32Storage>();
+#else
+    return std::make_unique<LinuxStorage>();
+#endif
+}
+
+std::unique_ptr<EventGroup> SystemFactory::CreateEventGroup() {
+#ifdef ESP_PLATFORM
+    return std::make_unique<Esp32EventGroup>();
+#else
+    return std::make_unique<LinuxEventGroup>();
+#endif
+}
+
 } // namespace platform

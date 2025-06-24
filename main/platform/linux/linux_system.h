@@ -7,9 +7,25 @@
 #include <queue>
 #include <atomic>
 #include <chrono>
+#include <functional>
 
 namespace platform {
 namespace linux_platform {
+
+class LinuxEventGroup : public EventGroup {
+public:
+    LinuxEventGroup();
+    ~LinuxEventGroup() override = default;
+    
+    SystemError SetBits(uint32_t bits) override;
+    SystemError ClearBits(uint32_t bits) override;
+    uint32_t WaitBits(uint32_t bits, bool clear_on_exit, bool wait_for_all, uint32_t timeout_ms) override;
+    
+private:
+    std::mutex mutex_;
+    std::condition_variable cv_;
+    uint32_t bits_ = 0;
+};
 
 class LinuxTimer : public Timer {
 public:

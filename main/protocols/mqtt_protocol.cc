@@ -1,7 +1,8 @@
 #include "mqtt_protocol.h"
-#include "board.h"
+#include "../boards/common/board.h"
 #include "application.h"
 #include "settings.h"
+#include "network/network_interface.h"
 
 #include <esp_log.h>
 #include <ml307_mqtt.h>
@@ -13,7 +14,7 @@
 #define TAG "MQTT"
 
 MqttProtocol::MqttProtocol() {
-    event_group_handle_ = xEventGroupCreate();
+    event_group_ = platform::SystemFactory::CreateEventGroup();
 }
 
 MqttProtocol::~MqttProtocol() {
@@ -24,7 +25,6 @@ MqttProtocol::~MqttProtocol() {
     if (mqtt_ != nullptr) {
         delete mqtt_;
     }
-    vEventGroupDelete(event_group_handle_);
 }
 
 bool MqttProtocol::Start() {
@@ -53,7 +53,7 @@ bool MqttProtocol::StartMqttClient(bool report_error) {
         return false;
     }
 
-    mqtt_ = Board::GetInstance().CreateMqtt();
+    mqtt_ = network::NetworkFactory::CreateMqtt().release();
     mqtt_->SetKeepAlive(keepalive_interval);
 
     mqtt_->OnDisconnected([this]() {
@@ -178,7 +178,7 @@ bool MqttProtocol::OpenAudioChannel() {
 
     error_occurred_ = false;
     session_id_ = "";
-    xEventGroupClearBits(event_group_handle_, MQTT_PROTOCOL_SERVER_HELLO_EVENT);
+    event_group_->ClearBits(MQTT_PROTOCOL_SERVER_HELLO_EVENT);
 
     auto message = GetHelloMessage();
     if (!SendText(message)) {
@@ -186,7 +186,7 @@ bool MqttProtocol::OpenAudioChannel() {
     }
 
     // 等待服务器响应
-    EventBits_t bits = xEventGroupWaitBits(event_group_handle_, MQTT_PROTOCOL_SERVER_HELLO_EVENT, pdTRUE, pdFALSE, pdMS_TO_TICKS(10000));
+    uint32_t bits = event_group_->WaitBits(MQTT_PROTOCOL_SERVER_HELLO_EVENT, true, false, 10000);
     if (!(bits & MQTT_PROTOCOL_SERVER_HELLO_EVENT)) {
         ESP_LOGE(TAG, "Failed to receive server hello");
         SetError(Lang::Strings::SERVER_TIMEOUT);
@@ -197,8 +197,9 @@ bool MqttProtocol::OpenAudioChannel() {
     if (udp_ != nullptr) {
         delete udp_;
     }
-    udp_ = Board::GetInstance().CreateUdp();
-    udp_->OnMessage([this](const std::string& data) {
+    udp_ = network::NetworkFactory::CreateUdp().release();
+    udp_->OnData([this](const void* data_ptr, size_t len) {
+        std::string data(static_cast<const char*>(data_ptr), len);
         /*
          * UDP Encrypted OPUS Packet Format:
          * |type 1u|flags 1u|payload_len 2u|ssrc 4u|timestamp 4u|sequence 4u|
@@ -322,7 +323,7 @@ void MqttProtocol::ParseServerHello(const cJSON* root) {
     mbedtls_aes_setkey_enc(&aes_ctx_, (const unsigned char*)DecodeHexString(key).c_str(), 128);
     local_sequence_ = 0;
     remote_sequence_ = 0;
-    xEventGroupSetBits(event_group_handle_, MQTT_PROTOCOL_SERVER_HELLO_EVENT);
+    event_group_->SetBits(MQTT_PROTOCOL_SERVER_HELLO_EVENT);
 }
 
 static const char hex_chars[] = "0123456789ABCDEF";

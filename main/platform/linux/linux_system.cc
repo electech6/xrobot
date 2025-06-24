@@ -10,6 +10,11 @@
 #include <iomanip>
 #include <cstdlib>
 #include <sys/statvfs.h>
+#include <iostream>
+#include <sys/resource.h>
+#include <sys/times.h>
+#include <cstring>
+#include <random>
 
 namespace platform {
 namespace linux_platform {
@@ -265,6 +270,51 @@ bool LinuxSystemInfo::PrintTaskList() {
     printf("Task list (Linux implementation):\n");
     // 这里可以实现Linux特定的进程列表显示
     return true;
+}
+
+// LinuxEventGroup 实现
+LinuxEventGroup::LinuxEventGroup() : bits_(0) {}
+
+SystemError LinuxEventGroup::SetBits(uint32_t bits) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    bits_ |= bits;
+    cv_.notify_all();
+    return SystemError::kSuccess;
+}
+
+SystemError LinuxEventGroup::ClearBits(uint32_t bits) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    bits_ &= ~bits;
+    return SystemError::kSuccess;
+}
+
+uint32_t LinuxEventGroup::WaitBits(uint32_t bits, bool clear_on_exit, bool wait_for_all, uint32_t timeout_ms) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    
+    auto pred = [this, bits, wait_for_all]() {
+        if (wait_for_all) {
+            return (bits_ & bits) == bits;
+        } else {
+            return (bits_ & bits) != 0;
+        }
+    };
+    
+    if (timeout_ms == 0) {
+        cv_.wait(lock, pred);
+    } else {
+        auto result = cv_.wait_for(lock, std::chrono::milliseconds(timeout_ms), pred);
+        if (!result) {
+            return 0; // 超时
+        }
+    }
+    
+    uint32_t result_bits = bits_ & bits;
+    
+    if (clear_on_exit) {
+        bits_ &= ~bits;
+    }
+    
+    return result_bits;
 }
 
 } // namespace linux_platform

@@ -14,6 +14,9 @@ set(SOURCES "audio_codecs/audio_codec.cc"
             "protocols/protocol.cc"
             "protocols/mqtt_protocol.cc"
             "protocols/websocket_protocol.cc"
+            "network/network_interface.cc"
+            "network/esp32_network.cc"
+            "network/linux_network.cc"
             "iot/thing.cc"
             "iot/thing_manager.cc"
             "mcp_server.cc"
@@ -36,7 +39,7 @@ else()
     list(APPEND SOURCES "platform/linux/linux_storage.cc")
 endif()
 
-set(INCLUDE_DIRS "." "display" "audio_codecs" "protocols" "audio_processing" "platform")
+set(INCLUDE_DIRS "." "display" "audio_codecs" "protocols" "audio_processing" "platform" "network")
 
 # 添加 IOT 相关文件
 file(GLOB IOT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/iot/things/*.cc)
@@ -254,6 +257,7 @@ endif()
 idf_component_register(SRCS ${SOURCES}
                     EMBED_FILES ${LANG_SOUNDS} ${COMMON_SOUNDS}
                     INCLUDE_DIRS ${INCLUDE_DIRS}
+                    # REQUIRES driver esp_http_client esp_websocket_client mqtt
                     WHOLE_ARCHIVE
                     )
 

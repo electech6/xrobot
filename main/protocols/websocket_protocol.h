@@ -3,10 +3,8 @@
 
 
 #include "protocol.h"
-
-#include <web_socket.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/event_groups.h>
+#include "network/network_interface.h"
+#include "platform/system_interface.h"
 
 #define WEBSOCKET_PROTOCOL_SERVER_HELLO_EVENT (1 << 0)
 
@@ -22,8 +20,8 @@ public:
     bool IsAudioChannelOpened() const override;
 
 private:
-    EventGroupHandle_t event_group_handle_;
-    WebSocket* websocket_ = nullptr;
+    std::unique_ptr<platform::EventGroup> event_group_;
+    network::WebSocketInterface* websocket_ = nullptr;
     int version_ = 1;
 
     void ParseServerHello(const cJSON* root);

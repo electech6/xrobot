@@ -20,6 +20,15 @@ enum class SystemError {
 // 存储接口前向声明
 class Storage;
 
+// 事件组接口
+class EventGroup {
+public:
+    virtual ~EventGroup() = default;
+    virtual SystemError SetBits(uint32_t bits) = 0;
+    virtual SystemError ClearBits(uint32_t bits) = 0;
+    virtual uint32_t WaitBits(uint32_t bits, bool clear_on_exit, bool wait_for_all, uint32_t timeout_ms) = 0;
+};
+
 // 定时器接口
 class Timer {
 public:
@@ -88,6 +97,7 @@ public:
     static std::unique_ptr<TaskManager> CreateTaskManager();
     static std::unique_ptr<SystemInfo> CreateSystemInfo();
     static std::unique_ptr<Storage> CreateStorage();
+    static std::unique_ptr<EventGroup> CreateEventGroup();
 };
 
 } // namespace platform

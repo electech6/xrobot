@@ -9,6 +9,7 @@
 #include <freertos/event_groups.h>
 #include <sstream>
 #include <iomanip>
+#include "esp32_storage.h"
 
 namespace platform {
 namespace esp32 {
@@ -249,6 +250,46 @@ bool Esp32SystemInfo::PrintTaskList() {
     vTaskList(buffer);
     printf("Task list: \n%s", buffer);
     return true;
+}
+
+// Esp32EventGroup 实现
+Esp32EventGroup::Esp32EventGroup() {
+    event_group_ = xEventGroupCreate();
+}
+
+Esp32EventGroup::~Esp32EventGroup() {
+    if (event_group_) {
+        vEventGroupDelete(event_group_);
+    }
+}
+
+SystemError Esp32EventGroup::SetBits(uint32_t bits) {
+    if (!event_group_) {
+        return SystemError::kInvalidParameter;
+    }
+    xEventGroupSetBits(event_group_, bits);
+    return SystemError::kSuccess;
+}
+
+SystemError Esp32EventGroup::ClearBits(uint32_t bits) {
+    if (!event_group_) {
+        return SystemError::kInvalidParameter;
+    }
+    xEventGroupClearBits(event_group_, bits);
+    return SystemError::kSuccess;
+}
+
+uint32_t Esp32EventGroup::WaitBits(uint32_t bits, bool clear_on_exit, bool wait_for_all, uint32_t timeout_ms) {
+    if (!event_group_) {
+        return 0;
+    }
+    return xEventGroupWaitBits(
+        event_group_,
+        bits,
+        clear_on_exit ? pdTRUE : pdFALSE,
+        wait_for_all ? pdTRUE : pdFALSE,
+        pdMS_TO_TICKS(timeout_ms)
+    );
 }
 
 } // namespace esp32

@@ -1,8 +1,9 @@
 #include "websocket_protocol.h"
-#include "board.h"
+#include "../boards/common/board.h"
 #include "system_info.h"
 #include "application.h"
 #include "settings.h"
+#include "network/network_interface.h"
 
 #include <cstring>
 #include <cJSON.h>
@@ -13,14 +14,13 @@
 #define TAG "WS"
 
 WebsocketProtocol::WebsocketProtocol() {
-    event_group_handle_ = xEventGroupCreate();
+    event_group_ = platform::SystemFactory::CreateEventGroup();
 }
 
 WebsocketProtocol::~WebsocketProtocol() {
     if (websocket_ != nullptr) {
         delete websocket_;
     }
-    vEventGroupDelete(event_group_handle_);
 }
 
 bool WebsocketProtocol::Start() {
@@ -100,7 +100,7 @@ bool WebsocketProtocol::OpenAudioChannel() {
 
     error_occurred_ = false;
 
-    websocket_ = Board::GetInstance().CreateWebSocket();
+    websocket_ = network::NetworkFactory::CreateWebSocket().release();
     
     if (!token.empty()) {
         // If token not has a space, add "Bearer " prefix
@@ -190,7 +190,7 @@ bool WebsocketProtocol::OpenAudioChannel() {
     }
 
     // Wait for server hello
-    EventBits_t bits = xEventGroupWaitBits(event_group_handle_, WEBSOCKET_PROTOCOL_SERVER_HELLO_EVENT, pdTRUE, pdFALSE, pdMS_TO_TICKS(10000));
+    uint32_t bits = event_group_->WaitBits(WEBSOCKET_PROTOCOL_SERVER_HELLO_EVENT, true, false, 10000);
     if (!(bits & WEBSOCKET_PROTOCOL_SERVER_HELLO_EVENT)) {
         ESP_LOGE(TAG, "Failed to receive server hello");
         SetError(Lang::Strings::SERVER_TIMEOUT);
@@ -256,5 +256,5 @@ void WebsocketProtocol::ParseServerHello(const cJSON* root) {
         }
     }
 
-    xEventGroupSetBits(event_group_handle_, WEBSOCKET_PROTOCOL_SERVER_HELLO_EVENT);
+    event_group_->SetBits(WEBSOCKET_PROTOCOL_SERVER_HELLO_EVENT);
 }

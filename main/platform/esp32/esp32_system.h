@@ -20,6 +20,19 @@
 namespace platform {
 namespace esp32 {
 
+class Esp32EventGroup : public EventGroup {
+public:
+    Esp32EventGroup();
+    ~Esp32EventGroup() override;
+    
+    SystemError SetBits(uint32_t bits) override;
+    SystemError ClearBits(uint32_t bits) override;
+    uint32_t WaitBits(uint32_t bits, bool clear_on_exit, bool wait_for_all, uint32_t timeout_ms) override;
+    
+private:
+    EventGroupHandle_t event_group_ = nullptr;
+};
+
 class Esp32Timer : public Timer {
 public:
     Esp32Timer();
