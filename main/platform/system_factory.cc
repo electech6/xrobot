@@ -13,6 +13,14 @@ using namespace platform::linux_platform;
 
 namespace platform {
 
+std::unique_ptr<Logger> Logger::GetInstance() {
+#ifdef ESP_PLATFORM
+    return std::make_unique<Esp32Logger>();
+#else
+    return std::make_unique<LinuxLogger>();
+#endif
+}
+
 std::unique_ptr<Timer> SystemFactory::CreateTimer() {
 #ifdef ESP_PLATFORM
     return std::make_unique<Esp32Timer>();
@@ -58,6 +66,14 @@ std::unique_ptr<EventGroup> SystemFactory::CreateEventGroup() {
     return std::make_unique<Esp32EventGroup>();
 #else
     return std::make_unique<LinuxEventGroup>();
+#endif
+}
+
+std::unique_ptr<ThreadConfig> SystemFactory::CreateThreadConfig() {
+#ifdef ESP_PLATFORM
+    return std::make_unique<Esp32ThreadConfig>();
+#else
+    return std::make_unique<LinuxThreadConfig>();
 #endif
 }
 

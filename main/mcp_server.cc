@@ -4,17 +4,22 @@
  */
 
 #include "mcp_server.h"
-#include <esp_log.h>
-#include <esp_app_desc.h>
+#include "platform/system_interface.h"
 #include <algorithm>
 #include <cstring>
-#include <esp_pthread.h>
 
 #include "application.h"
 #include "display.h"
 #include "board.h"
 
 #define TAG "MCP"
+
+// 添加简化的日志记录宏
+#define LOG_E(...) platform::Logger::GetInstance()->Log(platform::LogLevel::kError, TAG, __VA_ARGS__)
+#define LOG_W(...) platform::Logger::GetInstance()->Log(platform::LogLevel::kWarning, TAG, __VA_ARGS__)
+#define LOG_I(...) platform::Logger::GetInstance()->Log(platform::LogLevel::kInfo, TAG, __VA_ARGS__)
+#define LOG_D(...) platform::Logger::GetInstance()->Log(platform::LogLevel::kDebug, TAG, __VA_ARGS__)
+#define LOG_V(...) platform::Logger::GetInstance()->Log(platform::LogLevel::kVerbose, TAG, __VA_ARGS__)
 
 #define DEFAULT_TOOLCALL_STACK_SIZE 6144
 
@@ -110,11 +115,11 @@ void McpServer::AddCommonTools() {
 void McpServer::AddTool(McpTool* tool) {
     // Prevent adding duplicate tools
     if (std::find_if(tools_.begin(), tools_.end(), [tool](const McpTool* t) { return t->name() == tool->name(); }) != tools_.end()) {
-        ESP_LOGW(TAG, "Tool %s already added", tool->name().c_str());
+        LOG_W("Tool %s already added", tool->name().c_str());
         return;
     }
 
-    ESP_LOGI(TAG, "Add tool: %s", tool->name().c_str());
+    LOG_I("Add tool: %s", tool->name().c_str());
     tools_.push_back(tool);
 }
 
@@ -125,7 +130,7 @@ void McpServer::AddTool(const std::string& name, const std::string& description,
 void McpServer::ParseMessage(const std::string& message) {
     cJSON* json = cJSON_Parse(message.c_str());
     if (json == nullptr) {
-        ESP_LOGE(TAG, "Failed to parse MCP message: %s", message.c_str());
+        LOG_E("Failed to parse MCP message: %s", message.c_str());
         return;
     }
     ParseMessage(json);
@@ -155,14 +160,14 @@ void McpServer::ParseMessage(const cJSON* json) {
     // Check JSONRPC version
     auto version = cJSON_GetObjectItem(json, "jsonrpc");
     if (version == nullptr || !cJSON_IsString(version) || strcmp(version->valuestring, "2.0") != 0) {
-        ESP_LOGE(TAG, "Invalid JSONRPC version: %s", version ? version->valuestring : "null");
+        LOG_E("Invalid JSONRPC version: %s", version ? version->valuestring : "null");
         return;
     }
     
     // Check method
     auto method = cJSON_GetObjectItem(json, "method");
     if (method == nullptr || !cJSON_IsString(method)) {
-        ESP_LOGE(TAG, "Missing method");
+        LOG_E("Missing method");
         return;
     }
     
@@ -174,13 +179,13 @@ void McpServer::ParseMessage(const cJSON* json) {
     // Check params
     auto params = cJSON_GetObjectItem(json, "params");
     if (params != nullptr && !cJSON_IsObject(params)) {
-        ESP_LOGE(TAG, "Invalid params for method: %s", method_str.c_str());
+        LOG_E("Invalid params for method: %s", method_str.c_str());
         return;
     }
 
     auto id = cJSON_GetObjectItem(json, "id");
     if (id == nullptr || !cJSON_IsNumber(id)) {
-        ESP_LOGE(TAG, "Invalid id for method: %s", method_str.c_str());
+        LOG_E("Invalid id for method: %s", method_str.c_str());
         return;
     }
     auto id_int = id->valueint;
@@ -192,9 +197,11 @@ void McpServer::ParseMessage(const cJSON* json) {
                 ParseCapabilities(capabilities);
             }
         }
-        auto app_desc = esp_app_get_description();
+        
+        // 使用平台无关的系统信息接口获取应用程序信息
+        auto system_info = platform::SystemFactory::CreateSystemInfo();
         std::string message = "{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{}},\"serverInfo\":{\"name\":\"" BOARD_NAME "\",\"version\":\"";
-        message += app_desc->version;
+        message += system_info->GetAppVersion();
         message += "\"}}";
         ReplyResult(id_int, message);
     } else if (method_str == "tools/list") {
@@ -208,31 +215,31 @@ void McpServer::ParseMessage(const cJSON* json) {
         GetToolsList(id_int, cursor_str);
     } else if (method_str == "tools/call") {
         if (!cJSON_IsObject(params)) {
-            ESP_LOGE(TAG, "tools/call: Missing params");
+            LOG_E("tools/call: Missing params");
             ReplyError(id_int, "Missing params");
             return;
         }
         auto tool_name = cJSON_GetObjectItem(params, "name");
         if (!cJSON_IsString(tool_name)) {
-            ESP_LOGE(TAG, "tools/call: Missing name");
+            LOG_E("tools/call: Missing name");
             ReplyError(id_int, "Missing name");
             return;
         }
         auto tool_arguments = cJSON_GetObjectItem(params, "arguments");
         if (tool_arguments != nullptr && !cJSON_IsObject(tool_arguments)) {
-            ESP_LOGE(TAG, "tools/call: Invalid arguments");
+            LOG_E("tools/call: Invalid arguments");
             ReplyError(id_int, "Invalid arguments");
             return;
         }
         auto stack_size = cJSON_GetObjectItem(params, "stackSize");
         if (stack_size != nullptr && !cJSON_IsNumber(stack_size)) {
-            ESP_LOGE(TAG, "tools/call: Invalid stackSize");
+            LOG_E("tools/call: Invalid stackSize");
             ReplyError(id_int, "Invalid stackSize");
             return;
         }
         DoToolCall(id_int, std::string(tool_name->valuestring), tool_arguments, stack_size ? stack_size->valueint : DEFAULT_TOOLCALL_STACK_SIZE);
     } else {
-        ESP_LOGE(TAG, "Method not implemented: %s", method_str.c_str());
+        LOG_E("Method not implemented: %s", method_str.c_str());
         ReplyError(id_int, "Method not implemented: " + method_str);
     }
 }
@@ -291,7 +298,7 @@ void McpServer::GetToolsList(int id, const std::string& cursor) {
     
     if (json.back() == '[' && !tools_.empty()) {
         // 如果没有添加任何tool，返回错误
-        ESP_LOGE(TAG, "tools/list: Failed to add tool %s because of payload size limit", next_cursor.c_str());
+        LOG_E("tools/list: Failed to add tool %s because of payload size limit", next_cursor.c_str());
         ReplyError(id, "Failed to add tool " + next_cursor + " because of payload size limit");
         return;
     }
@@ -312,7 +319,7 @@ void McpServer::DoToolCall(int id, const std::string& tool_name, const cJSON* to
                                  });
     
     if (tool_iter == tools_.end()) {
-        ESP_LOGE(TAG, "tools/call: Unknown tool: %s", tool_name.c_str());
+        LOG_E("tools/call: Unknown tool: %s", tool_name.c_str());
         ReplyError(id, "Unknown tool: " + tool_name);
         return;
     }
@@ -336,30 +343,31 @@ void McpServer::DoToolCall(int id, const std::string& tool_name, const cJSON* to
             }
 
             if (!argument.has_default_value() && !found) {
-                ESP_LOGE(TAG, "tools/call: Missing valid argument: %s", argument.name().c_str());
+                LOG_E("tools/call: Missing valid argument: %s", argument.name().c_str());
                 ReplyError(id, "Missing valid argument: " + argument.name());
                 return;
             }
         }
     } catch (const std::exception& e) {
-        ESP_LOGE(TAG, "tools/call: %s", e.what());
+        LOG_E("tools/call: %s", e.what());
         ReplyError(id, e.what());
         return;
     }
 
-    // Start a task to receive data with stack size
-    esp_pthread_cfg_t cfg = esp_pthread_get_default_config();
-    cfg.thread_name = "tool_call";
-    cfg.stack_size = stack_size;
-    cfg.prio = 1;
-    esp_pthread_set_cfg(&cfg);
+    // 使用平台无关的线程配置接口
+    auto thread_config = platform::SystemFactory::CreateThreadConfig();
+    platform::ThreadConfig::Config config;
+    config.name = "tool_call";
+    config.stack_size = stack_size;
+    config.priority = 1;
+    thread_config->SetConfig(config);
 
     // Use a thread to call the tool to avoid blocking the main thread
     tool_call_thread_ = std::thread([this, id, tool_iter, arguments = std::move(arguments)]() {
         try {
             ReplyResult(id, (*tool_iter)->Call(arguments));
         } catch (const std::exception& e) {
-            ESP_LOGE(TAG, "tools/call: %s", e.what());
+            LOG_E("tools/call: %s", e.what());
             ReplyError(id, e.what());
         }
     });

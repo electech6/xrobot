@@ -17,6 +17,25 @@ enum class SystemError {
     kNotSupported = -5
 };
 
+// 日志级别定义
+enum class LogLevel {
+    kNone,
+    kError,
+    kWarning,
+    kInfo,
+    kDebug,
+    kVerbose
+};
+
+// 日志接口
+class Logger {
+public:
+    virtual ~Logger() = default;
+    virtual void Log(LogLevel level, const char* tag, const char* format, ...) = 0;
+    
+    static std::unique_ptr<Logger> GetInstance();
+};
+
 // 存储接口前向声明
 class Storage;
 
@@ -73,6 +92,21 @@ public:
     virtual uint32_t GetTickCount() = 0;
 };
 
+// 线程配置接口
+class ThreadConfig {
+public:
+    virtual ~ThreadConfig() = default;
+    
+    struct Config {
+        std::string name;
+        uint32_t stack_size = 4096;
+        int priority = 5;
+    };
+    
+    virtual void SetConfig(const Config& config) = 0;
+    virtual Config GetDefaultConfig() = 0;
+};
+
 // 系统信息接口
 class SystemInfo {
 public:
@@ -87,6 +121,11 @@ public:
     virtual uint32_t GetFlashSize() = 0;
     virtual bool PrintTaskCpuUsage(uint32_t wait_ms) = 0;
     virtual bool PrintTaskList() = 0;
+    
+    // 应用程序描述相关方法
+    virtual std::string GetAppName() = 0;
+    virtual std::string GetAppVersion() = 0;
+    virtual std::string GetAppDescription() = 0;
 };
 
 // 系统工厂类
@@ -98,6 +137,7 @@ public:
     static std::unique_ptr<SystemInfo> CreateSystemInfo();
     static std::unique_ptr<Storage> CreateStorage();
     static std::unique_ptr<EventGroup> CreateEventGroup();
+    static std::unique_ptr<ThreadConfig> CreateThreadConfig();
 };
 
 } // namespace platform

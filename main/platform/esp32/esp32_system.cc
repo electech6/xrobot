@@ -252,6 +252,23 @@ bool Esp32SystemInfo::PrintTaskList() {
     return true;
 }
 
+// 实现应用程序描述相关方法
+std::string Esp32SystemInfo::GetAppName() {
+    const esp_app_desc_t* app_desc = esp_app_get_description();
+    return std::string(app_desc->project_name);
+}
+
+std::string Esp32SystemInfo::GetAppVersion() {
+    const esp_app_desc_t* app_desc = esp_app_get_description();
+    return std::string(app_desc->version);
+}
+
+std::string Esp32SystemInfo::GetAppDescription() {
+    const esp_app_desc_t* app_desc = esp_app_get_description();
+    // 使用project_name作为描述，因为esp_app_desc_t没有description成员
+    return std::string("ESP32 Application: ") + app_desc->project_name;
+}
+
 // Esp32EventGroup 实现
 Esp32EventGroup::Esp32EventGroup() {
     event_group_ = xEventGroupCreate();

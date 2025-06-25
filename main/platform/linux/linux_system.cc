@@ -272,6 +272,22 @@ bool LinuxSystemInfo::PrintTaskList() {
     return true;
 }
 
+// 实现应用程序描述相关方法
+std::string LinuxSystemInfo::GetAppName() {
+    // Linux上可以从配置文件或环境变量获取应用程序名称
+    return "XRobot-Linux";
+}
+
+std::string LinuxSystemInfo::GetAppVersion() {
+    // Linux上可以从配置文件或环境变量获取应用程序版本
+    return "1.0.0";
+}
+
+std::string LinuxSystemInfo::GetAppDescription() {
+    // Linux上可以从配置文件或环境变量获取应用程序描述
+    return "XRobot Linux Version";
+}
+
 // LinuxEventGroup 实现
 LinuxEventGroup::LinuxEventGroup() : bits_(0) {}
 
