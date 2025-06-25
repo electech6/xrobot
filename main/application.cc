@@ -192,7 +192,17 @@ void Application::CheckNewVersion() {
         // This will block the loop until the activation is done or timeout
         for (int i = 0; i < 10; ++i) {
             ESP_LOGI(TAG, "Activating... %d/%d", i + 1, 10);
-            esp_err_t err = ota_.Activate();
+            platform::SystemError sys_err = ota_.Activate();
+            esp_err_t err = ESP_OK;
+            
+            if (sys_err == platform::SystemError::kSuccess) {
+                err = ESP_OK;
+            } else if (sys_err == platform::SystemError::kTimeout) {
+                err = ESP_ERR_TIMEOUT;
+            } else {
+                err = ESP_FAIL;
+            }
+            
             if (err == ESP_OK) {
                 xEventGroupSetBits(event_group_, CHECK_NEW_VERSION_DONE_EVENT);
                 break;

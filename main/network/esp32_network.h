@@ -60,6 +60,8 @@ public:
     void SetContent(std::string&& content) override;
     int GetStatusCode() const override;
     std::string ReadAll() override;
+    int Read(void* buffer, size_t len) override;
+    size_t GetBodyLength() const override;
     
 private:
     Http* http_ = nullptr;
@@ -80,6 +82,23 @@ public:
     
 private:
     Udp* udp_ = nullptr;
+};
+
+// ESP32 OTA实现
+class Esp32Ota : public OtaInterface {
+public:
+    Esp32Ota();
+    ~Esp32Ota() override;
+    
+    bool CheckVersion(const std::string& current_version, std::string& new_version, std::string& download_url) override;
+    bool UpgradeFirmware(const std::string& url, std::function<void(int progress, size_t speed)> callback = nullptr) override;
+    bool MarkCurrentVersionValid() override;
+    
+    std::string GetAppName() override;
+    std::string GetAppVersion() override;
+    std::string GetAppDescription() override;
+    
+    std::string CalculateHmac(const std::string& data) override;
 };
 
 } // namespace esp32

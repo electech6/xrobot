@@ -24,6 +24,7 @@ class WebSocketInterface;
 class MqttInterface;
 class HttpInterface;
 class UdpInterface;
+class OtaInterface;
 
 // WebSocket接口
 class WebSocketInterface {
@@ -87,6 +88,8 @@ public:
     // 获取响应
     virtual int GetStatusCode() const = 0;
     virtual std::string ReadAll() = 0;
+    virtual int Read(void* buffer, size_t len) { return 0; }
+    virtual size_t GetBodyLength() const { return 0; }
 };
 
 // UDP接口
@@ -109,6 +112,29 @@ public:
     virtual void OnData(std::function<void(const void* data, size_t len)> callback) = 0;
 };
 
+// OTA接口
+class OtaInterface {
+public:
+    virtual ~OtaInterface() = default;
+    
+    // 检查新版本
+    virtual bool CheckVersion(const std::string& current_version, std::string& new_version, std::string& download_url) = 0;
+    
+    // 下载并升级固件
+    virtual bool UpgradeFirmware(const std::string& url, std::function<void(int progress, size_t speed)> callback = nullptr) = 0;
+    
+    // 验证当前固件
+    virtual bool MarkCurrentVersionValid() = 0;
+    
+    // 获取应用信息
+    virtual std::string GetAppName() = 0;
+    virtual std::string GetAppVersion() = 0;
+    virtual std::string GetAppDescription() = 0;
+    
+    // 计算HMAC
+    virtual std::string CalculateHmac(const std::string& data) = 0;
+};
+
 // 网络工厂类
 class NetworkFactory {
 public:
@@ -116,6 +142,7 @@ public:
     static std::unique_ptr<MqttInterface> CreateMqtt();
     static std::unique_ptr<HttpInterface> CreateHttp();
     static std::unique_ptr<UdpInterface> CreateUdp();
+    static std::unique_ptr<OtaInterface> CreateOta();
 };
 
 } // namespace network

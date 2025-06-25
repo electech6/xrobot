@@ -40,4 +40,12 @@ std::unique_ptr<UdpInterface> NetworkFactory::CreateUdp() {
 #endif
 }
 
+std::unique_ptr<OtaInterface> NetworkFactory::CreateOta() {
+#ifdef ESP_PLATFORM
+    return std::make_unique<esp32::Esp32Ota>();
+#else
+    return std::make_unique<linux::LinuxOta>();
+#endif
+}
+
 } // namespace network 

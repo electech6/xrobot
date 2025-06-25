@@ -3,8 +3,7 @@
 
 #include <functional>
 #include <string>
-
-#include <esp_err.h>
+#include "platform/system_interface.h"
 #include "board.h"
 
 class Ota {
@@ -13,7 +12,7 @@ public:
     ~Ota();
 
     bool CheckVersion();
-    esp_err_t Activate();
+    platform::SystemError Activate();
     bool HasActivationChallenge() { return has_activation_challenge_; }
     bool HasNewVersion() { return has_new_version_; }
     bool HasMqttConfig() { return has_mqtt_config_; }

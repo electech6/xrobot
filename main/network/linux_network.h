@@ -50,6 +50,8 @@ public:
     void SetContent(std::string&& content) override {}
     int GetStatusCode() const override { return 0; }
     std::string ReadAll() override { return ""; }
+    int Read(void* buffer, size_t len) override { return 0; }
+    size_t GetBodyLength() const override { return 0; }
 };
 
 // Linux UDP实现（占位）
@@ -64,6 +66,23 @@ public:
     int Send(const void* data, size_t len) override { return 0; }
     int Receive(void* buffer, size_t len) override { return 0; }
     void OnData(std::function<void(const void* data, size_t len)> callback) override {}
+};
+
+// Linux OTA实现（占位）
+class LinuxOta : public OtaInterface {
+public:
+    LinuxOta() {}
+    ~LinuxOta() override {}
+    
+    bool CheckVersion(const std::string& current_version, std::string& new_version, std::string& download_url) override { return false; }
+    bool UpgradeFirmware(const std::string& url, std::function<void(int progress, size_t speed)> callback = nullptr) override { return false; }
+    bool MarkCurrentVersionValid() override { return true; }
+    
+    std::string GetAppName() override { return "XRobot-Linux"; }
+    std::string GetAppVersion() override { return "1.0.0"; }
+    std::string GetAppDescription() override { return "XRobot Linux Version"; }
+    
+    std::string CalculateHmac(const std::string& data) override { return ""; }
 };
 
 } // namespace linux
