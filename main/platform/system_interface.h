@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <cstdint>
+#include "logging/logger.h" // 包含日志接口
 
 namespace platform {
 
@@ -15,25 +16,6 @@ enum class SystemError {
     kOutOfMemory = -3,
     kTimeout = -4,
     kNotSupported = -5
-};
-
-// 日志级别定义
-enum class LogLevel {
-    kNone,
-    kError,
-    kWarning,
-    kInfo,
-    kDebug,
-    kVerbose
-};
-
-// 日志接口
-class Logger {
-public:
-    virtual ~Logger() = default;
-    virtual void Log(LogLevel level, const char* tag, const char* format, ...) = 0;
-    
-    static std::unique_ptr<Logger> GetInstance();
 };
 
 // 存储接口前向声明
@@ -139,5 +121,11 @@ public:
     static std::unique_ptr<EventGroup> CreateEventGroup();
     static std::unique_ptr<ThreadConfig> CreateThreadConfig();
 };
+
+// 兼容性定义，使现有代码能够继续工作
+// 将platform::LogLevel映射到logging::LogLevel
+using LogLevel = logging::LogLevel;
+// 将platform::Logger映射到logging::Logger
+using Logger = logging::Logger;
 
 } // namespace platform

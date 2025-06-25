@@ -13,14 +13,6 @@ using namespace platform::linux_platform;
 
 namespace platform {
 
-std::unique_ptr<Logger> Logger::GetInstance() {
-#ifdef ESP_PLATFORM
-    return std::make_unique<Esp32Logger>();
-#else
-    return std::make_unique<LinuxLogger>();
-#endif
-}
-
 std::unique_ptr<Timer> SystemFactory::CreateTimer() {
 #ifdef ESP_PLATFORM
     return std::make_unique<Esp32Timer>();

@@ -110,6 +110,9 @@ public:
     
     // 回调设置
     virtual void OnData(std::function<void(const void* data, size_t len)> callback) = 0;
+    
+    // 添加OnMessage方法，与底层Udp类保持一致
+    virtual void OnMessage(std::function<void(const std::string& data)> callback) = 0;
 };
 
 // OTA接口

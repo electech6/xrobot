@@ -27,6 +27,8 @@ set(SOURCES "audio_codecs/audio_codec.cc"
             "background_task.cc"
             "platform/system_factory.cc"
             "platform/storage_interface.cc"
+            "logging/console_logger.cc"
+            "logging/esp_logger.cc"
             "main.cc"
             )
 

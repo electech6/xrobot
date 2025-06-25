@@ -4,10 +4,10 @@
 #include "application.h"
 #include "settings.h"
 #include "network/network_interface.h"
+#include "logging/logger.h"
 
 #include <cstring>
 #include <cJSON.h>
-#include <esp_log.h>
 #include <arpa/inet.h>
 #include "assets/lang_config.h"
 
@@ -66,7 +66,7 @@ bool WebsocketProtocol::SendText(const std::string& text) {
     }
 
     if (!websocket_->Send(text)) {
-        ESP_LOGE(TAG, "Failed to send text: %s", text.c_str());
+        TAG_LOG_E("Failed to send text: %s", text.c_str());
         SetError(Lang::Strings::SERVER_ERROR);
         return false;
     }
@@ -162,7 +162,7 @@ bool WebsocketProtocol::OpenAudioChannel() {
                     }
                 }
             } else {
-                ESP_LOGE(TAG, "Missing message type, data: %s", data);
+                TAG_LOG_E("Missing message type, data: %s", data);
             }
             cJSON_Delete(root);
         }
@@ -170,15 +170,15 @@ bool WebsocketProtocol::OpenAudioChannel() {
     });
 
     websocket_->OnDisconnected([this]() {
-        ESP_LOGI(TAG, "Websocket disconnected");
+        TAG_LOG_I("Websocket disconnected");
         if (on_audio_channel_closed_ != nullptr) {
             on_audio_channel_closed_();
         }
     });
 
-    ESP_LOGI(TAG, "Connecting to websocket server: %s with version: %d", url.c_str(), version_);
+    TAG_LOG_I("Connecting to websocket server: %s with version: %d", url.c_str(), version_);
     if (!websocket_->Connect(url.c_str())) {
-        ESP_LOGE(TAG, "Failed to connect to websocket server");
+        TAG_LOG_E("Failed to connect to websocket server");
         SetError(Lang::Strings::SERVER_NOT_CONNECTED);
         return false;
     }
@@ -192,7 +192,7 @@ bool WebsocketProtocol::OpenAudioChannel() {
     // Wait for server hello
     uint32_t bits = event_group_->WaitBits(WEBSOCKET_PROTOCOL_SERVER_HELLO_EVENT, true, false, 10000);
     if (!(bits & WEBSOCKET_PROTOCOL_SERVER_HELLO_EVENT)) {
-        ESP_LOGE(TAG, "Failed to receive server hello");
+        TAG_LOG_E("Failed to receive server hello");
         SetError(Lang::Strings::SERVER_TIMEOUT);
         return false;
     }
@@ -204,11 +204,54 @@ bool WebsocketProtocol::OpenAudioChannel() {
     return true;
 }
 
+void WebsocketProtocol::ParseServerHello(const cJSON* root) {
+    auto session_id = cJSON_GetObjectItem(root, "session_id");
+    if (cJSON_IsString(session_id)) {
+        session_id_ = session_id->valuestring;
+    }
+    
+    auto audio = cJSON_GetObjectItem(root, "audio");
+    if (cJSON_IsObject(audio)) {
+        auto transport = cJSON_GetObjectItem(audio, "transport");
+        if (cJSON_IsString(transport)) {
+            if (strcmp(transport->valuestring, "websocket") != 0) {
+                TAG_LOG_E("Unsupported transport: %s", transport->valuestring);
+                return;
+            }
+        }
+        auto sample_rate = cJSON_GetObjectItem(audio, "sample_rate");
+        if (cJSON_IsNumber(sample_rate)) {
+            server_sample_rate_ = sample_rate->valueint;
+        }
+        auto frame_duration = cJSON_GetObjectItem(audio, "frame_duration");
+        if (cJSON_IsNumber(frame_duration)) {
+            server_frame_duration_ = frame_duration->valueint;
+        }
+    }
+
+    TAG_LOG_I("Session ID: %s", session_id_.c_str());
+    event_group_->SetBits(WEBSOCKET_PROTOCOL_SERVER_HELLO_EVENT);
+}
+
 std::string WebsocketProtocol::GetHelloMessage() {
-    // keys: message type, version, audio_params (format, sample_rate, channels)
+    auto& board = Board::GetInstance();
+    auto system_info = platform::SystemFactory::CreateSystemInfo();
+
     cJSON* root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "type", "hello");
-    cJSON_AddNumberToObject(root, "version", version_);
+    cJSON_AddStringToObject(root, "client_id", board.GetUuid().c_str());
+    cJSON_AddStringToObject(root, "device_id", system_info->GetMacAddress().c_str());
+    cJSON_AddStringToObject(root, "app_version", system_info->GetAppVersion().c_str());
+    cJSON_AddStringToObject(root, "language", Lang::CODE);
+
+    cJSON* audio = cJSON_CreateObject();
+    cJSON_AddStringToObject(audio, "transport", "websocket");
+    cJSON_AddStringToObject(audio, "format", "opus");
+    cJSON_AddNumberToObject(audio, "sample_rate", 16000);
+    cJSON_AddNumberToObject(audio, "channels", 1);
+    cJSON_AddNumberToObject(audio, "frame_duration", 60);
+    cJSON_AddItemToObject(root, "audio", audio);
+
     cJSON* features = cJSON_CreateObject();
 #if CONFIG_USE_SERVER_AEC
     cJSON_AddBoolToObject(features, "aec", true);
@@ -217,44 +260,11 @@ std::string WebsocketProtocol::GetHelloMessage() {
     cJSON_AddBoolToObject(features, "mcp", true);
 #endif
     cJSON_AddItemToObject(root, "features", features);
-    cJSON_AddStringToObject(root, "transport", "websocket");
-    cJSON* audio_params = cJSON_CreateObject();
-    cJSON_AddStringToObject(audio_params, "format", "opus");
-    cJSON_AddNumberToObject(audio_params, "sample_rate", 16000);
-    cJSON_AddNumberToObject(audio_params, "channels", 1);
-    cJSON_AddNumberToObject(audio_params, "frame_duration", OPUS_FRAME_DURATION_MS);
-    cJSON_AddItemToObject(root, "audio_params", audio_params);
-    auto json_str = cJSON_PrintUnformatted(root);
-    std::string message(json_str);
-    cJSON_free(json_str);
+
+    char* message = cJSON_PrintUnformatted(root);
+    std::string result(message);
+    cJSON_free(message);
     cJSON_Delete(root);
-    return message;
-}
 
-void WebsocketProtocol::ParseServerHello(const cJSON* root) {
-    auto transport = cJSON_GetObjectItem(root, "transport");
-    if (transport == nullptr || strcmp(transport->valuestring, "websocket") != 0) {
-        ESP_LOGE(TAG, "Unsupported transport: %s", transport->valuestring);
-        return;
-    }
-
-    auto session_id = cJSON_GetObjectItem(root, "session_id");
-    if (cJSON_IsString(session_id)) {
-        session_id_ = session_id->valuestring;
-        ESP_LOGI(TAG, "Session ID: %s", session_id_.c_str());
-    }
-
-    auto audio_params = cJSON_GetObjectItem(root, "audio_params");
-    if (cJSON_IsObject(audio_params)) {
-        auto sample_rate = cJSON_GetObjectItem(audio_params, "sample_rate");
-        if (cJSON_IsNumber(sample_rate)) {
-            server_sample_rate_ = sample_rate->valueint;
-        }
-        auto frame_duration = cJSON_GetObjectItem(audio_params, "frame_duration");
-        if (cJSON_IsNumber(frame_duration)) {
-            server_frame_duration_ = frame_duration->valueint;
-        }
-    }
-
-    event_group_->SetBits(WEBSOCKET_PROTOCOL_SERVER_HELLO_EVENT);
+    return result;
 }

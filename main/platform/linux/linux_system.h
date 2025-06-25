@@ -35,44 +35,6 @@ private:
     Config current_config_;
 };
 
-class LinuxLogger : public Logger {
-public:
-    void Log(LogLevel level, const char* tag, const char* format, ...) override {
-        // 获取日志级别前缀
-        const char* level_str = "";
-        switch (level) {
-            case LogLevel::kError:
-                level_str = "E";
-                break;
-            case LogLevel::kWarning:
-                level_str = "W";
-                break;
-            case LogLevel::kInfo:
-                level_str = "I";
-                break;
-            case LogLevel::kDebug:
-                level_str = "D";
-                break;
-            case LogLevel::kVerbose:
-                level_str = "V";
-                break;
-            default:
-                level_str = "I";
-                break;
-        }
-        
-        // 格式化消息
-        va_list args;
-        va_start(args, format);
-        char buffer[1024];
-        vsnprintf(buffer, sizeof(buffer), format, args);
-        va_end(args);
-        
-        // 输出到标准输出
-        std::cout << "[" << level_str << "][" << tag << "] " << buffer << std::endl;
-    }
-};
-
 class LinuxEventGroup : public EventGroup {
 public:
     LinuxEventGroup();

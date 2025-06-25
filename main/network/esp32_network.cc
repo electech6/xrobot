@@ -216,6 +216,12 @@ void Esp32Udp::OnData(std::function<void(const void* data, size_t len)> callback
     });
 }
 
+void Esp32Udp::OnMessage(std::function<void(const std::string& data)> callback) {
+    if (!udp_) return;
+    // 直接传递回调给底层Udp类
+    udp_->OnMessage(callback);
+}
+
 // ESP32 OTA实现
 Esp32Ota::Esp32Ota() {
 }

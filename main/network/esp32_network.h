@@ -79,6 +79,7 @@ public:
     int Send(const void* data, size_t len) override;
     int Receive(void* buffer, size_t len) override;
     void OnData(std::function<void(const void* data, size_t len)> callback) override;
+    void OnMessage(std::function<void(const std::string& data)> callback) override;
     
 private:
     Udp* udp_ = nullptr;

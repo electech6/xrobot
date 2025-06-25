@@ -4,6 +4,7 @@
 #include "assets/lang_config.h"
 #include "platform/system_interface.h"
 #include "network/network_interface.h"
+#include "logging/logger.h"
 
 #include <cJSON.h>
 #include <algorithm>
@@ -14,10 +15,10 @@
 #define TAG "Ota"
 
 // 使用平台无关的日志接口
-#define LOG_E(...) platform::Logger::GetInstance()->Log(platform::LogLevel::kError, TAG, __VA_ARGS__)
-#define LOG_W(...) platform::Logger::GetInstance()->Log(platform::LogLevel::kWarning, TAG, __VA_ARGS__)
-#define LOG_I(...) platform::Logger::GetInstance()->Log(platform::LogLevel::kInfo, TAG, __VA_ARGS__)
-#define LOG_D(...) platform::Logger::GetInstance()->Log(platform::LogLevel::kDebug, TAG, __VA_ARGS__)
+#define LOG_E(...) logging::Logger::GetInstance()->Log(logging::LogLevel::kError, TAG, __VA_ARGS__)
+#define LOG_W(...) logging::Logger::GetInstance()->Log(logging::LogLevel::kWarning, TAG, __VA_ARGS__)
+#define LOG_I(...) logging::Logger::GetInstance()->Log(logging::LogLevel::kInfo, TAG, __VA_ARGS__)
+#define LOG_D(...) logging::Logger::GetInstance()->Log(logging::LogLevel::kDebug, TAG, __VA_ARGS__)
 
 Ota::Ota() {
     // 获取系统信息

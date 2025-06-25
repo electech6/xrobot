@@ -1,5 +1,5 @@
 #include "system_info.h"
-#include <iostream>
+#include "logging/logger.h"
 
 #define TAG "SystemInfo"
 
@@ -86,9 +86,9 @@ bool SystemInfo::PrintTaskList() {
 
 // 静态方法实现
 void SystemInfo::PrintHeapStats() {
-    std::cout << "Free heap: " << GetFreeHeapSize() 
-              << " bytes, Minimum free heap: " << GetMinimumFreeHeapSize() 
-              << " bytes" << std::endl;
+    logging::Logger::GetInstance()->Log(logging::LogLevel::kInfo, TAG, 
+        "Free heap: %zu bytes, Minimum free heap: %zu bytes", 
+        GetFreeHeapSize(), GetMinimumFreeHeapSize());
 }
 
 // 实例方法实现

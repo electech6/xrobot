@@ -11,15 +11,26 @@
 #include "application.h"
 #include "display.h"
 #include "board.h"
+#include "system_info.h"
+#include "settings.h"
+#include "iot/thing_manager.h"
+#include "logging/logger.h"
+
+#include <cJSON.h>
+#include <string>
+#include <sstream>
+#include <vector>
+#include <map>
+#include <functional>
 
 #define TAG "MCP"
 
-// 添加简化的日志记录宏
-#define LOG_E(...) platform::Logger::GetInstance()->Log(platform::LogLevel::kError, TAG, __VA_ARGS__)
-#define LOG_W(...) platform::Logger::GetInstance()->Log(platform::LogLevel::kWarning, TAG, __VA_ARGS__)
-#define LOG_I(...) platform::Logger::GetInstance()->Log(platform::LogLevel::kInfo, TAG, __VA_ARGS__)
-#define LOG_D(...) platform::Logger::GetInstance()->Log(platform::LogLevel::kDebug, TAG, __VA_ARGS__)
-#define LOG_V(...) platform::Logger::GetInstance()->Log(platform::LogLevel::kVerbose, TAG, __VA_ARGS__)
+// 使用平台无关的日志接口
+#define LOG_E(...) logging::Logger::GetInstance()->Log(logging::LogLevel::kError, TAG, __VA_ARGS__)
+#define LOG_W(...) logging::Logger::GetInstance()->Log(logging::LogLevel::kWarning, TAG, __VA_ARGS__)
+#define LOG_I(...) logging::Logger::GetInstance()->Log(logging::LogLevel::kInfo, TAG, __VA_ARGS__)
+#define LOG_D(...) logging::Logger::GetInstance()->Log(logging::LogLevel::kDebug, TAG, __VA_ARGS__)
+#define LOG_V(...) logging::Logger::GetInstance()->Log(logging::LogLevel::kVerbose, TAG, __VA_ARGS__)
 
 #define DEFAULT_TOOLCALL_STACK_SIZE 6144
 

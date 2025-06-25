@@ -66,6 +66,7 @@ public:
     int Send(const void* data, size_t len) override { return 0; }
     int Receive(void* buffer, size_t len) override { return 0; }
     void OnData(std::function<void(const void* data, size_t len)> callback) override {}
+    void OnMessage(std::function<void(const std::string& data)> callback) override {}
 };
 
 // Linux OTA实现（占位）

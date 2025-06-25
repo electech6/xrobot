@@ -44,39 +44,6 @@ public:
     }
 };
 
-class Esp32Logger : public Logger {
-public:
-    void Log(LogLevel level, const char* tag, const char* format, ...) override {
-        va_list args;
-        va_start(args, format);
-        
-        esp_log_level_t esp_level;
-        switch (level) {
-            case LogLevel::kError:
-                esp_level = ESP_LOG_ERROR;
-                break;
-            case LogLevel::kWarning:
-                esp_level = ESP_LOG_WARN;
-                break;
-            case LogLevel::kInfo:
-                esp_level = ESP_LOG_INFO;
-                break;
-            case LogLevel::kDebug:
-                esp_level = ESP_LOG_DEBUG;
-                break;
-            case LogLevel::kVerbose:
-                esp_level = ESP_LOG_VERBOSE;
-                break;
-            default:
-                esp_level = ESP_LOG_INFO;
-                break;
-        }
-        
-        esp_log_write(esp_level, tag, format, args);
-        va_end(args);
-    }
-};
-
 class Esp32EventGroup : public EventGroup {
 public:
     Esp32EventGroup();
